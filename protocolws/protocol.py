@@ -6,7 +6,12 @@ import asyncws
 import json
 import random
 import string
+import types
 
+try:
+    from socket import socketpair
+except ImportError:
+    from asyncio.windows_utils import socketpair
 
 class ErrMsg:
     DATA_PARSE_WRONG = {
@@ -37,6 +42,7 @@ class WebsocketServer:
 
         self.server = None
         self.lock = asyncio.Lock()
+        self.loop = None
 
         self.connected = {}
 
@@ -45,6 +51,8 @@ class WebsocketServer:
         self.log_time = True
         self.log_client_id = True
         self.log_data = True
+
+        self.rsocket, self.wsocket = socketpair()
 
     def _checkdata(self, data, keys):
         for key in keys:
@@ -75,14 +83,36 @@ class WebsocketServer:
 
         print(log)
 
-    def run(self, ip, port):
+    def set_up(self, ip, port, loop=None):
         self.server = asyncws.start_server(self.handle_client, ip, port)
-        asyncio.get_event_loop().run_until_complete(self.server)
 
+        if loop is None:
+            self.loop = asyncio.get_event_loop()
+        else:
+            self.loop = loop
+            asyncio.set_event_loop(self.loop)
+
+        self.loop.add_reader(self.rsocket, self.stop)
+        self.loop.run_until_complete(self.server)
+
+    def run_forever(self):
         try:
-            asyncio.get_event_loop().run_forever()
+            self.loop.run_forever()
         except KeyboardInterrupt:
             pass
+
+    def stop(self):
+        # If recieve signal, then stop server
+        self.rsocket.recv(1024)
+        self.loop.remove_reader(self.rsocket)
+        self.loop.stop()
+
+        try:
+            self.loop.close()
+        except RuntimeError:
+            pass
+        self.rsocket.close()
+        self.wsocket.close()
 
     def welcome(self, _id, ws):
         with (yield from self.lock):
@@ -113,24 +143,28 @@ class WebsocketServer:
 
                 data = json.loads(data)
 
-                self.request_log(_id, "SEND", data)
             except json.decoder.JSONDecodeError:
                 self.request_log(_id, "ERROR", data)
                 yield from self.send(ws, ErrMsg.DATA_PARSE_WRONG)
+                continue
 
             if "method" not in data:
                 yield from self.send(ws, ErrMsg.MISSING_ARGUMENT)
                 continue
 
             try:
-                method_handler = self.__getattr__(data["method"])
+                self.request_log(_id, data["method"], data)
+                method_handler = self.__getattribute__(data["method"])
             except AttributeError:
                 print(f"\033[0;31mMethod '{data['method']}' not exist\x1b[0m")
                 yield from self.send(ws, ErrMsg.WRONG_METHOD)
                 continue
 
             try:
-                method_handler(_id, ws, data)
+                method_handler = method_handler(_id, ws, data)
+                if isinstance(method_handler, types.GeneratorType):
+                    yield from method_handler
+                    
             except Exception as e:
                 print(f"\033[0;31mExcpetion occur when handling data")
                 logging.exception(e)
@@ -139,4 +173,5 @@ class WebsocketServer:
 
 if __name__ == "__main__":
     server = WebsocketServer()
-    server.run("localhost", 12345)
+    server.set_up("localhost", 12345)
+    server.run_forever()
