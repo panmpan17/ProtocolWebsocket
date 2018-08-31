@@ -5,6 +5,7 @@ import asyncio
 import asyncws
 import time
 import json
+import ssl
 
 import sys
 sys.path.append("..")
@@ -23,6 +24,10 @@ class Server(WebsocketServer):
     def NOTHING(self, _id, ws, data):
         print("Doing Nothing. YEAH.")
 
+    def CLOSE(self, _id, ws, data):
+        print("Closing Connection")
+        return True
+
 
 def setUpModule():
     global server, serverthread, wsocket
@@ -31,7 +36,8 @@ def setUpModule():
 
     def begin():
         global wsocket
-        server.set_up("localhost", SOCKET_PORT, asyncio.new_event_loop())
+        server.set_up("localhost", SOCKET_PORT, loop=asyncio.new_event_loop(),
+            ssl=ssl)
         wsocket = server.wsocket
         server.run_forever()
 
@@ -44,10 +50,12 @@ class WebsocketServerTestCase(unittest.TestCase):
     def setUp(self):
         self.url = "ws://localhost:" + str(SOCKET_PORT)
 
-    def tearDown(self):
-        print("Unittest Ended")
+    def test_server(self):
         global server, serverthread, wsocket
-        time.sleep(.5)
+
+        loop = asyncio.get_event_loop()
+        websocket = loop.run_until_complete(asyncws.connect(self.url))
+        loop.run_until_complete(self.non_ssl_server(websocket))
 
         # Send stop signal to server
         wsocket.send(b"stop")
@@ -56,13 +64,8 @@ class WebsocketServerTestCase(unittest.TestCase):
         serverthread = None
         server = None
 
-    def test_server_up(self):
-        loop = asyncio.get_event_loop()
-        websocket = loop.run_until_complete(asyncws.connect(self.url))
-        loop.run_until_complete(self.connect(websocket))
-
     @asyncio.coroutine
-    def connect(self, websocket):
+    def non_ssl_server(self, websocket):
         yield from websocket.send('hello')
         data = yield from websocket.recv()
         data = json.loads(data)
@@ -97,3 +100,10 @@ class WebsocketServerTestCase(unittest.TestCase):
         del data
 
         yield from websocket.send(json.dumps({"method": "NOTHING"}))
+
+        msg = {"method": "CLOSE"}
+        yield from websocket.send(json.dumps(msg))
+
+    @asyncio.coroutine
+    def ssl_server(self, websocket):
+        pass

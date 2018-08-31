@@ -167,12 +167,19 @@ class WebsocketServer:
             try:
                 method_handler = method_handler(_id, ws, data)
                 if isinstance(method_handler, types.GeneratorType):
-                    yield from method_handler
+                    resault = yield from method_handler
+                else:
+                    resault = method_handler
+
+                if resault == True:
+                    yield from self.disconnect(_id, ws)
+                    ws.close()
+                    return
                     
             except Exception as e:
                 print(f"\033[0;31mExcpetion occur when handling data")
                 logging.exception(e)
-                print("\x1b[0m")
+                print("\x1b[0m") 
 
 
 if __name__ == "__main__":
