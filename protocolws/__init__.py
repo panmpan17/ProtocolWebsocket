@@ -1,3 +1,4 @@
 from .protocol import WebsocketServer, ErrMsg
 
-__version__ = "Snapshot 0.1"
+name = "protocolws"
+__version__ = "0.0.1"

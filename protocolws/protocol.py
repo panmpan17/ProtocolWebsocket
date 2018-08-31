@@ -83,8 +83,12 @@ class WebsocketServer:
 
         print(log)
 
-    def set_up(self, ip, port, loop=None):
-        self.server = asyncws.start_server(self.handle_client, ip, port)
+    def set_up(self, ip, port, loop=None, ssl=None):
+        if ssl is None:
+            self.server = asyncws.start_server(self.handle_client, ip, port,
+                ssl=ssl)
+        else:
+            self.server = asyncws.start_server(self.handle_client, ip, port)
 
         if loop is None:
             self.loop = asyncio.get_event_loop()
