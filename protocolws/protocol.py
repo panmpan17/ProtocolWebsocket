@@ -137,16 +137,20 @@ class WebsocketServer:
         yield from self.welcome(_id, ws)
 
         while True:
-            try:
-                data = yield from ws.recv()
+            data = yield from ws.recv()
 
-                # player disconnect
-                if data is None:
+            # player disconnect
+            if data is None:
+                try:
                     yield from self.disconnect(_id, ws)
-                    return
+                except Exception as e:
+                    print(f"\033[0;31mExcpetion occur when try to disconnect")
+                    logging.exception(e)
+                    print("\x1b[0m") 
+                return
 
+            try:
                 data = json.loads(data)
-
             except json.decoder.JSONDecodeError:
                 self.request_log(_id, "ERROR", data)
                 yield from self.send(ws, ErrMsg.DATA_PARSE_WRONG)
@@ -169,17 +173,16 @@ class WebsocketServer:
                 if isinstance(method_handler, types.GeneratorType):
                     resault = yield from method_handler
                 else:
-                    resault = method_handler
-
-                if resault == True:
-                    yield from self.disconnect(_id, ws)
-                    ws.close()
-                    return
-                    
+                    resault = method_handler                    
             except Exception as e:
                 print(f"\033[0;31mExcpetion occur when handling data")
                 logging.exception(e)
                 print("\x1b[0m") 
+
+            if resault == True:
+                yield from self.disconnect(_id, ws)
+                ws.close()
+                return
 
 
 if __name__ == "__main__":
