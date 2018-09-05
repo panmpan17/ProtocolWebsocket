@@ -52,9 +52,18 @@ class WebsocketServer:
         self.log_client_id = True
         self.log_data = True
 
+        for t, b in log_option.items():
+            if isinstance(b, bool):
+                self.__setattr__("log_" + t, b)
+
         self.rsocket, self.wsocket = socketpair()
 
-    def _checkdata(self, data, keys):
+    def set_log(self, log_option):
+        for t, b in log_option.items():
+            if isinstance(b, bool):
+                self.__setattr__("log_" + t, b)
+
+    def check_data(self, data, keys):
         for key in keys:
             if key not in data:
                 return False

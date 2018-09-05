@@ -66,6 +66,8 @@ class WebsocketServerTestCase(unittest.TestCase):
 
     @asyncio.coroutine
     def non_ssl_server(self, websocket):
+        server.set_log({"client_id": False, "data": False})
+
         yield from websocket.send('hello')
         data = yield from websocket.recv()
         data = json.loads(data)
@@ -74,6 +76,8 @@ class WebsocketServerTestCase(unittest.TestCase):
         self.assertEqual(data["reason"], ErrMsg.DATA_PARSE_WRONG["reason"])
         del data
 
+        server.set_log({"client_id": False, "data": True})
+
         yield from websocket.send(json.dumps({"data": "nothing"}))
         data = yield from websocket.recv()
         data = json.loads(data)
@@ -81,6 +85,7 @@ class WebsocketServerTestCase(unittest.TestCase):
         self.assertEqual(data["method"], ErrMsg.MISSING_ARGUMENT["method"])
         self.assertEqual(data["reason"], ErrMsg.MISSING_ARGUMENT["reason"])
         del data
+        server.set_log({"client_id": True, "data": False})
 
         yield from websocket.send(json.dumps({"method": "WRONGMETHOD"}))
         data = yield from websocket.recv()
@@ -89,6 +94,8 @@ class WebsocketServerTestCase(unittest.TestCase):
         self.assertEqual(data["method"], ErrMsg.WRONG_METHOD["method"])
         self.assertEqual(data["reason"], ErrMsg.WRONG_METHOD["reason"])
         del data
+
+        server.set_log({"date": True, "time": False})
 
         msg = {"method": "ECHO", "data": "ECHO... Echo... echo..."}
         yield from websocket.send(json.dumps(msg))
@@ -99,11 +106,10 @@ class WebsocketServerTestCase(unittest.TestCase):
         self.assertEqual(data["data"], msg["data"])
         del data
 
+        server.set_log({"date": False, "time": True})
+
         yield from websocket.send(json.dumps({"method": "NOTHING"}))
 
         msg = {"method": "CLOSE"}
         yield from websocket.send(json.dumps(msg))
 
-    @asyncio.coroutine
-    def ssl_server(self, websocket):
-        pass
