@@ -13,6 +13,7 @@ try:
 except ImportError:
     from asyncio.windows_utils import socketpair
 
+
 class ErrMsg:
     DATA_PARSE_WRONG = {
         "method": "ERROR",
@@ -95,7 +96,7 @@ class WebsocketServer:
     def set_up(self, ip, port, loop=None, ssl=None):
         if ssl is None:
             self.server = asyncws.start_server(self.handle_client, ip, port,
-                ssl=ssl)
+                                               ssl=ssl)
         else:
             self.server = asyncws.start_server(self.handle_client, ip, port)
 

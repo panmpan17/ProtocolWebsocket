@@ -18,7 +18,7 @@ setuptools.setup(
     url="https://github.com/panmpan17/ProtocolWebsocket",
 
     packages=setuptools.find_packages(exclude=["build", "dist", "docs",
-        "*.egg-info", "testcase"]),
+                                               "*.egg-info", "testcase"]),
     keywords="websocket protocol socket",
     classifiers=(
         "Programming Language :: Python :: 3",
